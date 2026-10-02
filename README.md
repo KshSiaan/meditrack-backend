@@ -669,3 +669,7 @@ src/
 
 For the frontend-facing request contract, see
 [API_INTEGRATION.txt](./API_INTEGRATION.txt).
+
+## Techncal Decisitons
+
+Better was primarily used for authentication alongside mongoose and mongoDB which offered auth permission, admin access, rate limiting and many more. Arcjet could be used for even higher OWASP security but due to time shortage the plan was abadoned. 
