@@ -74,6 +74,10 @@ bun run dev
 The API listens on `http://localhost:5000` by default. Set `PORT` if another
 port is required. Confirm the connection at:
 
+For Vercel, `api/index.ts` is the serverless entrypoint. Set the production
+environment variables in Vercel Project Settings; do not rely on local `.env`.
+`src/server.ts` remains the local Nodemon entrypoint. Confirm the connection at:
+
 ```text
 GET http://localhost:5000/api/health
 ```
