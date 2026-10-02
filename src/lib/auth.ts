@@ -5,6 +5,7 @@ import type { Db } from "mongodb";
 
 const secret = process.env.BETTER_AUTH_SECRET;
 const baseURL = process.env.BETTER_AUTH_URL;
+const clientDomain = process.env.CLIENT_DOMAIN;
 
 if (!secret || secret.length < 32) {
   throw new Error("BETTER_AUTH_SECRET must be at least 32 characters long.");
@@ -14,15 +15,27 @@ if (!baseURL) {
   throw new Error("BETTER_AUTH_URL is required.");
 }
 
-if (!process.env.CLIENT_DOMAIN) {
+if (!clientDomain) {
   throw new Error("CLIENT_DOMAIN is required.");
 }
 
+const configuredBaseURL = baseURL;
+const configuredClientDomain = clientDomain;
+
 export function createAuth(database: Db) {
+  const secureCookies = configuredBaseURL.startsWith("https://");
+
   return betterAuth({
     appName: "MediTrack",
-    baseURL,
-    trustedOrigins: [process.env.CLIENT_DOMAIN!],
+    baseURL: configuredBaseURL,
+    trustedOrigins: [configuredClientDomain],
+    advanced: {
+      useSecureCookies: secureCookies,
+      defaultCookieAttributes: {
+        secure: secureCookies,
+        sameSite: secureCookies ? "none" : "lax",
+      },
+    },
     rateLimit: {
       storage: "database",
       enabled: true,

@@ -13,11 +13,17 @@ type Auth = ReturnType<typeof createAuth>;
 
 export function createApp(auth: Auth) {
   const app = express();
+  const clientDomain = process.env.CLIENT_DOMAIN;
+
+  if (!clientDomain) {
+    throw new Error("CLIENT_DOMAIN is required.");
+  }
 
   app.disable("x-powered-by");
+  app.set("trust proxy", 1);
   app.use(
     cors({
-      origin: true,
+      origin: clientDomain,
       credentials: true,
     }),
   );

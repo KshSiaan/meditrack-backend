@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: meditrack-backend
+    runtime: node
+    buildCommand: bun install --frozen-lockfile
+    startCommand: bun run start
+    healthCheckPath: /api/health
+    envVars:
+      - key: BETTER_AUTH_URL
+        sync: false
+      - key: BETTER_AUTH_SECRET
+        sync: false
+      - key: CLIENT_DOMAIN
+        sync: false
+      - key: DB_URL
+        sync: false

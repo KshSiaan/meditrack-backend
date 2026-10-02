@@ -72,7 +72,26 @@ bun run dev
 ```
 
 The API listens on `http://localhost:5000` by default. Set `PORT` if another
-port is required. Confirm the connection at:
+port is required.
+
+## Deploy to Render
+
+This repository includes a `render.yaml` Blueprint for the web service. Create
+a new Render Blueprint from the repository and provide these environment
+variables when Render prompts for them:
+
+| Variable | Render value |
+| --- | --- |
+| `BETTER_AUTH_URL` | The public Render URL for this backend, such as `https://meditrack-backend.onrender.com` |
+| `BETTER_AUTH_SECRET` | A new random secret with at least 32 characters |
+| `CLIENT_DOMAIN` | The deployed frontend origin, including its `https://` scheme |
+| `DB_URL` | The MongoDB Atlas connection string, with the username and password URL-encoded |
+
+Do not copy values from the local `.env` file into source control. Set the
+variables in the Render service dashboard or Blueprint prompt instead. Render
+provides `PORT` automatically; the server uses that value and does not require
+it to be configured manually. The Blueprint uses `/api/health` as its health
+check path.
 
 For Vercel, `src/index.ts` is the serverless entrypoint detected by the
 Express zero-configuration build. It initializes MongoDB/auth lazily and
@@ -149,6 +168,13 @@ secrets, and passwords must remain in the ignored `.env` file or a secret
 manager and must never be copied into README files, commits, screenshots, or
 frontend code. MongoDB credentials containing reserved URL characters must be
 percent-encoded.
+
+For a deployed frontend and backend on separate HTTPS Render services,
+`CLIENT_DOMAIN` is used as the exact CORS allowlist origin and Better Auth
+trusted origin. Credentialed requests are enabled, and HTTPS deployments use
+`Secure` and `SameSite=None` cookies. Local HTTP development keeps
+`SameSite=Lax` cookies so the local frontend continues to work. Render's
+reverse proxy is trusted for forwarded request and protocol information.
 
 ## Commands
 
