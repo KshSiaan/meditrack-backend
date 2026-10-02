@@ -6,6 +6,8 @@ services:
     startCommand: bun run start
     healthCheckPath: /api/health
     envVars:
+      - key: NODE_ENV
+        value: production
       - key: BETTER_AUTH_URL
         sync: false
       - key: BETTER_AUTH_SECRET

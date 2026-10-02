@@ -23,7 +23,8 @@ const configuredBaseURL = baseURL;
 const configuredClientDomain = clientDomain;
 
 export function createAuth(database: Db) {
-  const secureCookies = configuredBaseURL.startsWith("https://");
+  const isProduction = process.env.NODE_ENV === "production";
+  const secureCookies = isProduction || configuredBaseURL.startsWith("https://");
 
   return betterAuth({
     appName: "MediTrack",

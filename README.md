@@ -91,7 +91,8 @@ Do not copy values from the local `.env` file into source control. Set the
 variables in the Render service dashboard or Blueprint prompt instead. Render
 provides `PORT` automatically; the server uses that value and does not require
 it to be configured manually. The Blueprint uses `/api/health` as its health
-check path.
+check path and sets `NODE_ENV=production`, which ensures deployed Better Auth
+cookies use `Secure` and `SameSite=None`.
 
 For Vercel, `src/index.ts` is the serverless entrypoint detected by the
 Express zero-configuration build. It initializes MongoDB/auth lazily and
