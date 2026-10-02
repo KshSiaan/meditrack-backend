@@ -1,0 +1,607 @@
+MEDITRACK API INTEGRATION GUIDE
+===============================
+
+Base URL
+--------
+
+Development:
+http://localhost:5000
+
+All API routes below are relative to the base URL.
+Example:
+http://localhost:5000/api/doctors
+
+The backend allows cross-origin requests and credentials:
+- Send credentials with browser requests.
+- Fetch API: fetch(url, { credentials: "include" })
+- Axios: axios.create({ baseURL, withCredentials: true })
+
+
+1. AUTHENTICATION MODEL
+=======================
+
+Better Auth manages authenticable users. Doctors and patients are application
+records and are not login accounts.
+
+Better Auth collections:
+- user
+- account
+- session
+- verification
+
+MediTrack application collections:
+- doctors
+- patients
+
+Only authenticated Better Auth users can read dashboard, doctor, and patient
+routes. Only users with the Better Auth "admin" role can create, update, or
+delete doctors and patients.
+
+The frontend should preserve the Better Auth session cookie after sign-in and
+send it on every protected request.
+
+
+2. AUTH ROUTES
+==============
+
+2.1 Sign up
+-----------
+
+POST /api/auth/sign-up/email
+Content-Type: application/json
+
+Request body:
+{
+  "name": "Admin User",
+  "email": "user@example.com",
+  "password": "SecurePassword123!"
+}
+
+Required fields:
+- name: string
+- email: valid email string
+- password: string
+
+Success:
+- HTTP 200
+- Returns a Better Auth user and session token/cookie.
+
+
+2.2 Sign in
+-----------
+
+POST /api/auth/sign-in/email
+Content-Type: application/json
+
+Request body:
+{
+  "email": "meditrack@admin.com",
+  "password": "meditrack@admincom"
+}
+
+Success:
+- HTTP 200
+- Creates an authenticated session.
+- Store/use the returned cookie automatically.
+
+
+2.3 Get current session
+-----------------------
+
+GET /api/auth/get-session
+
+Success:
+- HTTP 200
+- Returns the current session and authenticated user.
+
+Use the returned user role to decide which management controls to display.
+The backend remains the final authority and enforces permissions server-side.
+
+
+2.4 Sign out
+------------
+
+POST /api/auth/sign-out
+
+Success:
+- HTTP 200
+- Invalidates the current session.
+
+
+2.5 Auth health check
+---------------------
+
+GET /api/auth/ok
+
+Expected success:
+{
+  "ok": true
+}
+
+
+3. COMMON RESPONSE RULES
+========================
+
+Successful collection responses use:
+{
+  "data": [],
+  "pagination": {
+    "page": 1,
+    "limit": 20,
+    "total": 42
+  }
+}
+
+Pagination query parameters:
+- page: positive integer, default 1
+- limit: positive integer, default 20, maximum 100
+
+The backend sorts doctors and patients by createdAt descending.
+
+Common errors:
+
+401 Unauthorized:
+{
+  "error": "Authentication required."
+}
+
+403 Forbidden:
+{
+  "error": "Admin role required."
+}
+
+404 Not Found:
+{
+  "error": "Doctor not found."
+}
+
+400 Validation error:
+{
+  "error": "field is required."
+}
+
+500 Server error:
+{
+  "error": "Internal server error"
+}
+
+Always handle non-2xx responses before reading a successful response shape.
+
+
+4. HEALTH
+=========
+
+GET /api/health
+
+Authentication:
+- Public.
+
+Response:
+{
+  "status": "ok",
+  "database": {
+    "connected": true,
+    "state": "connected"
+  },
+  "timestamp": "2026-10-02T12:00:00.000Z"
+}
+
+Possible status values:
+- ok: MongoDB is connected
+- degraded: MongoDB is not connected
+
+
+5. DOCTOR DATA MODEL
+====================
+
+Doctor object:
+{
+  "_id": "MongoDB ObjectId string",
+  "name": "Dr. Ada Lovelace",
+  "specialization": "Cardiology",
+  "hospital": "MediTrack General",
+  "phone": "+1 555 0100",
+  "email": "ada@example.com",
+  "createdAt": "2026-10-02T12:00:00.000Z",
+  "updatedAt": "2026-10-02T12:00:00.000Z",
+  "patientCount": 4
+}
+
+Required create fields:
+- name: string, maximum 120 characters
+- specialization: string, maximum 120 characters
+- hospital: string, maximum 160 characters
+- phone: string, maximum 40 characters
+- email: string, maximum 254 characters
+
+patientCount is included in doctor list responses. It is calculated from the
+number of patient records whose doctorId references that doctor.
+
+
+6. DOCTOR ROUTES
+================
+
+6.1 List doctors
+----------------
+
+GET /api/doctors
+
+Authentication:
+- Required for all authenticated users.
+
+Query parameters:
+- page: integer, default 1
+- limit: integer, default 20, maximum 100
+- search: searches name, specialization, and hospital
+- specialization: case-insensitive partial match
+- hospital: case-insensitive partial match
+- assignment: assigned, unassigned, or all; based on patient count
+- from: createdAt lower date boundary
+- to: createdAt upper date boundary
+
+Example:
+GET /api/doctors?search=cardio&page=1&limit=10
+
+Doctor assignment filter examples:
+
+Doctors with at least one assigned patient:
+GET /api/doctors?assignment=assigned&page=1&limit=20
+
+Doctors with no assigned patients:
+GET /api/doctors?assignment=unassigned&page=1&limit=20
+
+All doctors, whether they have patients or not:
+GET /api/doctors?assignment=all&page=1&limit=20
+
+The assignment filter is optional and defaults to all. Each doctor response
+includes patientCount, which is the value used by this filter.
+
+Response:
+{
+  "data": [
+    {
+      "_id": "66f000000000000000000001",
+      "name": "Dr. Ada Lovelace",
+      "specialization": "Cardiology",
+      "hospital": "MediTrack General",
+      "phone": "+1 555 0100",
+      "email": "ada@example.com",
+      "createdAt": "2026-10-02T12:00:00.000Z",
+      "updatedAt": "2026-10-02T12:00:00.000Z",
+      "patientCount": 4
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 10,
+    "total": 1
+  }
+}
+
+
+6.2 Create doctor
+-----------------
+
+POST /api/doctors
+Authentication:
+- Admin only.
+
+Request body:
+{
+  "name": "Dr. Ada Lovelace",
+  "specialization": "Cardiology",
+  "hospital": "MediTrack General",
+  "phone": "+1 555 0100",
+  "email": "ada@example.com"
+}
+
+Response:
+- HTTP 201
+- { "data": Doctor }
+
+
+6.3 Update doctor
+-----------------
+
+PATCH /api/doctors/:id
+Authentication:
+- Admin only.
+
+All doctor fields are optional in a PATCH request:
+{
+  "name": "Dr. Ada Lovelace",
+  "specialization": "Interventional Cardiology",
+  "hospital": "MediTrack General",
+  "phone": "+1 555 0102",
+  "email": "ada@example.com"
+}
+
+Response:
+- HTTP 200
+- { "data": Doctor }
+
+
+6.4 Delete doctor
+-----------------
+
+DELETE /api/doctors/:id
+Authentication:
+- Admin only.
+
+Success:
+- HTTP 204
+- Empty response body.
+
+Constraint:
+- A doctor cannot be deleted while patients are assigned to that doctor.
+
+Conflict response:
+- HTTP 409
+- {
+    "error": "Reassign or delete patients before deleting this doctor."
+  }
+
+
+6.5 List doctor patients
+-----------------------
+
+GET /api/doctors/:id/patients
+
+Authentication:
+- Required.
+
+Query parameters:
+- page
+- limit
+
+Response:
+{
+  "doctor": Doctor,
+  "data": [ Patient with populated doctorId ],
+  "pagination": {
+    "page": 1,
+    "limit": 20,
+    "total": 4
+  }
+}
+
+
+7. PATIENT DATA MODEL
+=====================
+
+Patient object:
+{
+  "_id": "MongoDB ObjectId string",
+  "name": "John Doe",
+  "email": "john@example.com",
+  "phone": "+1 555 0101",
+  "dateOfBirth": "1990-01-01T00:00:00.000Z",
+  "condition": "Hypertension",
+  "assignedAt": "2026-10-02T12:00:00.000Z",
+  "doctorId": {
+    "_id": "66f000000000000000000001",
+    "name": "Dr. Ada Lovelace",
+    "specialization": "Cardiology",
+    "hospital": "MediTrack General",
+    "phone": "+1 555 0100",
+    "email": "ada@example.com"
+  },
+  "createdAt": "2026-10-02T12:00:00.000Z",
+  "updatedAt": "2026-10-02T12:00:00.000Z"
+}
+
+Required create fields:
+- name: string, maximum 120 characters
+- email: string, maximum 254 characters
+- phone: string, maximum 40 characters
+- dateOfBirth: valid date value
+- condition: string, maximum 160 characters
+- doctorId: valid MongoDB ObjectId
+
+The API returns the assigned doctor populated in patient responses.
+assignedAt is set when the patient is first created and updates whenever the
+patient is assigned or reassigned through the patient update route.
+
+
+8. PATIENT ROUTES
+=================
+
+8.1 List patients
+-----------------
+
+GET /api/patients
+
+Authentication:
+- Required.
+
+Query parameters:
+- page: integer, default 1
+- limit: integer, default 20, maximum 100
+- search: searches name, email, and condition
+- condition: case-insensitive partial match
+- doctorId: filter by a specific assigned doctor ObjectId
+- assignment: assigned, unassigned, or all; defaults to all
+- from: assignedAt lower date boundary
+- to: assignedAt upper date boundary
+
+Example:
+GET /api/patients?condition=hypertension&doctorId=66f000000000000000000001&from=2026-10-01&to=2026-10-31
+
+Doctor assignment filter examples:
+
+Assigned patients:
+GET /api/patients?assignment=assigned&page=1&limit=20
+
+Unassigned patients:
+GET /api/patients?assignment=unassigned&page=1&limit=20
+
+All patients, whether assigned or unassigned:
+GET /api/patients?assignment=all&page=1&limit=20
+
+The assignment parameter is optional and defaults to all. Use doctorId when
+the frontend needs patients assigned to one specific doctor. If both doctorId
+and assignment are supplied, assignment determines whether the result is
+assigned or unassigned; doctorId still narrows assigned results to that doctor.
+
+Response:
+{
+  "data": [ Patient ],
+  "pagination": {
+    "page": 1,
+    "limit": 20,
+    "total": 1
+  }
+}
+
+
+8.2 Create patient under doctor
+-------------------------------
+
+POST /api/patients/doctor/:doctorId
+Authentication:
+- Admin only.
+
+Request body:
+{
+  "name": "John Doe",
+  "email": "john@example.com",
+  "phone": "+1 555 0101",
+  "dateOfBirth": "1990-01-01",
+  "condition": "Hypertension"
+}
+
+The doctorId is supplied in the URL and is not required in the request body.
+
+Response:
+- HTTP 201
+- { "data": Patient }
+
+
+8.3 Update patient
+------------------
+
+PATCH /api/patients/:id
+Authentication:
+- Admin only.
+
+All fields are optional:
+{
+  "name": "John Doe",
+  "email": "john@example.com",
+  "phone": "+1 555 0101",
+  "dateOfBirth": "1990-01-01",
+  "condition": "Controlled hypertension",
+  "doctorId": "66f000000000000000000001"
+}
+
+If doctorId changes, the target doctor must exist. Send `"doctorId": null` to
+unassign the patient; this clears doctorId and assignedAt.
+
+Response:
+- HTTP 200
+- { "data": Patient }
+
+
+8.4 Delete patient
+------------------
+
+DELETE /api/patients/:id
+Authentication:
+- Admin only.
+
+Success:
+- HTTP 204
+- Empty response body.
+
+
+9. DASHBOARD
+============
+
+GET /api/dashboard
+
+Authentication:
+- Required.
+
+Response:
+{
+  "data": {
+    "totalDoctors": 8,
+    "totalPatients": 42,
+    "patientsPerDoctor": [
+      {
+        "doctorId": "66f000000000000000000001",
+        "doctorName": "Dr. Ada Lovelace",
+        "patientCount": 4
+      }
+    ],
+    "patientsByDate": [
+      {
+        "_id": "2026-10-02",
+        "count": 3
+      }
+    ]
+  }
+}
+
+Dashboard dataset limits:
+- patientsPerDoctor contains the top 10 doctors by assigned patient count.
+- patientsByDate contains the latest 25 dates with patient records.
+- patientsByDate is returned oldest-to-newest within that 25-date window so it
+  can be rendered directly as a chronological chart.
+
+
+10. ADMIN ACCOUNT
+=================
+
+Create the initial admin account after configuring .env:
+
+bun run seed:admin
+
+Default local credentials:
+- Email: meditrack@admin.com
+- Password: meditrack@admincom
+- Role: admin
+
+The seeder is idempotent. If the email already exists, it leaves the existing
+account completely unchanged, including password, name, and role.
+Change the default password outside local development.
+
+
+11. FRONTEND REQUEST EXAMPLE
+============================
+
+const api = axios.create({
+  baseURL: "http://localhost:5000",
+  withCredentials: true
+});
+
+const session = await api.get("/api/auth/get-session");
+const doctors = await api.get("/api/doctors", {
+  params: { page: 1, limit: 20, search: "cardio" }
+});
+
+For mutation controls:
+- Show create/edit/delete controls only for session.user.role === "admin".
+- Still handle HTTP 403 because backend authorization is authoritative.
+
+
+12. ROUTE SUMMARY
+=================
+
+Public:
+- GET  /api/health
+- ALL  /api/auth/*
+
+Authenticated read routes:
+- GET /api/doctors
+- GET /api/doctors/:id/patients
+- GET /api/patients
+- GET /api/dashboard
+
+Admin mutation routes:
+- POST   /api/doctors
+- PATCH  /api/doctors/:id
+- DELETE /api/doctors/:id
+- POST   /api/patients/doctor/:doctorId
+- PATCH  /api/patients/:id
+- DELETE /api/patients/:id

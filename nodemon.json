@@ -1,0 +1,7 @@
+{
+  "watch": ["src"],
+  "ext": "ts",
+  "exec": "bun run src/server.ts",
+  "signal": "SIGTERM",
+  "delay": "200"
+}

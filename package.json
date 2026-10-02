@@ -1,0 +1,29 @@
+{
+  "name": "backend_meditrack",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "nodemon",
+    "start": "bun run src/server.ts",
+    "typecheck": "tsc --noEmit",
+    "seed:admin": "bun run src/scripts/seed-admin.ts"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/cors": "^2.8.19"
+  },
+  "peerDependencies": {
+    "typescript": "^7.0.2"
+  },
+  "dependencies": {
+    "@better-auth/mongo-adapter": "^1.7.7",
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.6.4",
+    "better-auth": "^1.7.7",
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "mongodb": "^7.7.0",
+    "mongoose": "^9.10.3",
+    "nodemon": "^3.1.14"
+  }
+}
