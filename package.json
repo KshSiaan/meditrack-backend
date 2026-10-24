@@ -3,8 +3,8 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "dev": "node api.js && nodemon",
-    "start": "node api.js && bun run src/server.ts",
+    "dev": "nodemon",
+    "start": "bun run src/server.ts",
     "typecheck": "tsc --noEmit",
     "seed:admin": "bun run src/scripts/seed-admin.ts"
   },
